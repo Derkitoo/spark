@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Spark — Quick Capture",
+  "description": "Capture ideas, selected text and useful pages directly into Spark.",
+  "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlV0RVfeN6pVYCoZadW9k8v1yD+hw8pwVrCGFtVL9TCcWv9yRM0yEt1rvsgl6bgTpsVlVfvzBPNpKt6sR0Jg8rLn3Bv4GSG8GpmUzYNVkXEt9HOurPlIG+ti3rnUFuikBLvdY9twfwG//kYwo1mB+FJ/o/YwUyAlNP9FGtVDREo0BPKQdVbJjUo6qP/Hmews8mwyEMNKrIDvz/rJUEn7HrLDKXOXEtteUniOZVbvg411pE9t4X/2SWBLA+UArLaKhOdYB7DlMDHFFPtgnCCdaoOkqGxFo6ArpUXsLRkAyHhfrG/SJNp1583gZnqIgUO22lTFxkSxm/O5YvedxK6I/iQIDAQAB",
+  "permissions": ["identity", "storage", "activeTab", "scripting"],
+  "host_permissions": ["https://nwjiiuyefxbvpyytnhah.supabase.co/*"],
+  "action": { "default_title": "Capture with Spark", "default_popup": "popup.html" },
+  "commands": { "_execute_action": { "suggested_key": { "default": "Ctrl+Shift+Y", "mac": "Command+Shift+Y" }, "description": "Open Spark capture" } }
+}
