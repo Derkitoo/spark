@@ -51,6 +51,22 @@ export default function Home() {
     return () => data.subscription.unsubscribe();
   }, []);
 
+  async function syncToSupabase(ideasToSync: Idea[], userId: string) {
+    if (!ideasToSync.length) return true;
+    const fullRows = ideasToSync.map(i => toRow(i, userId));
+    const { error: fullErr } = await supabase.from("ideas").upsert(fullRows);
+    if (fullErr) {
+      // Fallback: try core rows without tags/pinned if DB schema is pending migration
+      const coreRows = ideasToSync.map(i => toRowCore(i, userId));
+      const { error: coreErr } = await supabase.from("ideas").upsert(coreRows);
+      if (coreErr) {
+        console.error("Supabase sync error:", coreErr.message);
+        return false;
+      }
+    }
+    return true;
+  }
+
   useEffect(() => {
     if (!user) return;
     let active = true;
@@ -61,8 +77,7 @@ export default function Home() {
         const saved = localStorage.getItem("etincelle-ideas-v1");
         const local: Idea[] = saved ? JSON.parse(saved) : [];
         if (local.length) {
-          const { error: uploadError } = await supabase.from("ideas").upsert(local.map(i => toRow(i, user.id)));
-          if (uploadError) throw uploadError;
+          await syncToSupabase(local, user.id);
         }
         const { data, error: loadError } = await supabase.from("ideas").select("*").order("updated_at", { ascending: false });
         if (loadError) throw loadError;
@@ -71,7 +86,8 @@ export default function Home() {
           setIdeas(synced);
           localStorage.setItem("etincelle-ideas-v1", JSON.stringify(synced));
         }
-      } catch {
+      } catch (err) {
+        console.warn("Sync notice:", err);
         if (active) setError("La synchronisation a rencontré un problème.");
       } finally {
         if (active) {
@@ -90,8 +106,8 @@ export default function Home() {
     localStorage.setItem("etincelle-ideas-v1", JSON.stringify(next));
     if (user && next.length) {
       setSyncing(true);
-      void supabase.from("ideas").upsert(next.map(i => toRow(i, user.id))).then(({ error }) => {
-        if (error) setError("La synchronisation a échoué.");
+      void syncToSupabase(next, user.id).then(ok => {
+        if (!ok) setError("La synchronisation a rencontré un problème.");
         setSyncing(false);
       });
     }
@@ -496,6 +512,23 @@ function toRow(idea: Idea, userId: string) {
     next_action: idea.nextAction ?? "",
     tags: idea.tags ?? [],
     pinned: idea.pinned ?? false,
+    created_at: new Date(idea.createdAt).toISOString(),
+    updated_at: new Date(idea.updatedAt).toISOString(),
+  };
+}
+
+function toRowCore(idea: Idea, userId: string) {
+  return {
+    id: idea.id,
+    user_id: userId,
+    title: idea.title,
+    content: idea.content,
+    category: idea.category,
+    status: idea.status,
+    problem: idea.problem ?? "",
+    audience: idea.audience ?? "",
+    potential: idea.potential ?? "",
+    next_action: idea.nextAction ?? "",
     created_at: new Date(idea.createdAt).toISOString(),
     updated_at: new Date(idea.updatedAt).toISOString(),
   };
