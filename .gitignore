@@ -40,3 +40,4 @@ yarn-error.log*
 /work/
 /web/node_modules/
 /web/dist/
+/web/*.tsbuildinfo
