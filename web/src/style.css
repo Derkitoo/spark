@@ -10,3 +10,71 @@
 @media(max-width:800px){.sidebar{width:74px;padding:26px 12px}.brand{margin:0 auto 40px;font-size:0}.brand span{font-size:22px}.nav{justify-content:center}.nav span{font-size:21px}.nav{font-size:0}.nav b,.sidebarFoot{display:none}.content{margin-left:74px;width:calc(100% - 74px)}header{padding:0 22px}.hero{padding-top:45px}.hero h1{font-size:37px}.ideaGrid,.library .ideaGrid{grid-template-columns:1fr 1fr}.recent{padding-bottom:40px}.themeRow{grid-template-columns:1fr 1fr}.connectionLayout{grid-template-columns:1fr}.insight{position:static}.growthPath{grid-template-columns:1fr 1fr}.gardenFocus{align-items:flex-start;gap:15px}.matureBody{grid-template-columns:200px 1fr;gap:40px;padding-top:60px}.question h1{font-size:33px}}
 @media(max-width:520px){.sidebar{position:fixed;inset:auto 0 0;width:100%;height:65px;flex-direction:row;padding:8px 12px;border:0;border-top:1px solid var(--line)}.brand,.sidebarFoot{display:none}.sidebar nav{display:flex;width:100%;justify-content:space-around}.nav{padding:9px 14px}.nav span{display:block}.nav{font-size:0!important}.content{margin:0 0 65px;width:100%}header{height:58px}.cloud{font-size:9px}.hero{padding:35px 18px}.hero h1{font-size:34px}.hero h1 br{display:none}.recent{padding:0 18px 35px}.ideaGrid,.library .ideaGrid{grid-template-columns:1fr}.library,.connections,.garden{padding:36px 18px}.library h1,.connections h1,.garden h1{font-size:34px}.libraryHead,.connectionsHead,.gardenHead{align-items:flex-start;gap:18px}.newIdea{white-space:nowrap}.modal{padding:21px}.fields{grid-template-columns:1fr}.titleInput{font-size:24px}.themeRow{grid-template-columns:1fr}.pairIdeas{align-items:flex-start;flex-direction:column}.pairIdeas span{display:none}.connectionStat{display:none}.gardenStats{grid-template-columns:1fr}.gardenFocus{flex-direction:column}.growthPath{grid-template-columns:1fr}.modalActions{flex-wrap:wrap}.matureBtn{order:-1;width:100%}.matureNav{padding:0 18px}.matureBody{display:block;padding:35px 20px}.matureBody aside h2{margin-bottom:15px}.stepList{display:flex;overflow:auto;margin-bottom:38px}.stepList button{font-size:0}.stepList button span{font-size:9px}.question h1{font-size:30px}.question textarea{height:165px}}
 @media(max-width:520px){.authPage{grid-template-columns:1fr}.authBrand{min-height:38vh;padding:28px 24px}.authBrand h1{font-size:32px}.authBrand p,.authQuote{display:none}.authCard{padding:20px}.authCard>div{padding:28px 23px}}
+
+/* New Features: Tags, Pins, AI Assistant */
+.tagRow{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#f5f6f1;border-radius:8px;margin-bottom:12px;border:1px solid #e2e4dc}
+.tagIcon{color:#8f9993;font-weight:700;font-size:14px}
+.tagField{border:0;outline:0;background:transparent;width:100%;font-size:12px;color:var(--ink)}
+.tagField::placeholder{color:#a5aca7}
+.captureBottom{display:flex;align-items:center;justify-content:space-between;width:100%}
+
+.cardHeaderRow{display:flex;align-items:center;justify-content:space-between;width:100%}
+.pinBadgeBtn{border:0;background:transparent;font-size:16px;cursor:pointer;color:#a8b2ac;transition:color .15s,transform .15s}
+.pinBadgeBtn:hover,.pinBadgeBtn.active{color:#b78d4e;transform:scale(1.15)}
+.ideaCard.pinned{border-color:#dcc698;background:#fffdf8;box-shadow:0 6px 20px #b78d4e15}
+
+.cardTags{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 4px}
+.cardTagPill{font-size:9px;background:#f0f3eb;color:#5a6e64;padding:3px 7px;border-radius:6px;cursor:pointer;transition:background .15s}
+.cardTagPill:hover{background:#dfded2;color:var(--ink)}
+.cardTagMore{font-size:9px;color:#939b96;padding:3px 2px}
+
+.filterPills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px}
+.filterPill{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:20px;padding:6px 13px;font-size:11px;cursor:pointer;transition:all .15s}
+.filterPill:hover{border-color:#b5bda8;color:var(--ink)}
+.filterPill.active{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
+
+.clearSearch{border:0;background:transparent;color:#919994;font-size:18px;cursor:pointer;padding:0 8px}
+
+.modalTopActions{display:flex;align-items:center;gap:10px}
+.pinModalBtn{border:1px solid #d4d9d1;background:#f3f5ee;color:#5f6c65;border-radius:8px;padding:6px 11px;font-size:11px;cursor:pointer;transition:all .15s}
+.pinModalBtn:hover,.pinModalBtn.active{background:#f6ebcf;border-color:#d4b97a;color:#856124;font-weight:600}
+.closeModal{border:0;background:#e9ebe5;border-radius:50%;width:31px;height:31px;font-size:18px;cursor:pointer;display:grid;place-items:center}
+.tagEditSection{margin:15px 0}
+.tagLabel{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#76817c;margin-bottom:6px}
+.tagInput{width:100%;border:1px solid var(--line);background:#fff;border-radius:8px;padding:10px 12px;font-size:12px;color:var(--ink);outline:0}
+
+.aiSparkBtn{border:1px solid #c8b07e;background:#f7eedb;color:#78581e;border-radius:8px;padding:9px 13px;font-size:11px;font-weight:650;cursor:pointer;transition:all .15s}
+.aiSparkBtn:hover{background:#f3e4c4;transform:translateY(-1px)}
+
+/* AI Modal & Assistant Panel */
+.aiModalBack{position:fixed;z-index:40;inset:0;background:#17241f99;display:grid;place-items:center;padding:20px;backdrop-filter:blur(5px)}
+.aiModal{width:min(620px,100%);background:#fcfbf7;border-radius:20px;padding:28px;box-shadow:0 30px 80px #14231d66;border:1px solid #e7ded0}
+.aiHeader{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #eee8dc;padding-bottom:18px;margin-bottom:20px}
+.aiTitleRow{display:flex;align-items:center;gap:14px}
+.aiIcon{width:40px;height:40px;border-radius:12px;background:#f3dfac;color:#6b4d1b;display:grid;place-items:center;font-size:20px}
+.aiHeader h2{font:500 22px "Playfair Display";margin:4px 0 0;color:var(--ink)}
+.aiHeaderActions{display:flex;align-items:center;gap:10px}
+.aiConfigBtn{border:1px solid #dcd7ca;background:#f3efdf;color:#6d6756;border-radius:8px;padding:6px 11px;font-size:10px;cursor:pointer}
+.aiSettingsPanel{background:#f3efe5;border:1px solid #e3decb;border-radius:12px;padding:14px 16px;margin-bottom:20px}
+.aiSettingsPanel h4{margin:0 0 4px;font-size:12px;color:var(--ink)}
+.aiSettingsPanel p{margin:0 0 8px;font-size:11px;color:var(--muted)}
+.apiKeyInput{width:100%;border:1px solid #d4cebc;border-radius:8px;padding:8px 12px;font-size:11px;background:#fff;outline:0;color:var(--ink)}
+.aiBody{min-height:220px}
+.aiLoading{min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#79857e;text-align:center}
+.sparkleSpinner{font-size:32px;color:#c79955;animation:spinSparkle 1.8s infinite ease-in-out}
+@keyframes spinSparkle{0%{transform:rotate(0deg) scale(0.9);opacity:.6}50%{transform:rotate(180deg) scale(1.2);opacity:1}100%{transform:rotate(360deg) scale(0.9);opacity:.6}}
+.aiContent{display:grid;gap:14px}
+.aiCard{background:#fff;border:1px solid #e8e3d5;border-radius:14px;padding:16px 18px;box-shadow:0 2px 10px #243a300a}
+.aiCardTag{display:block;font-size:9px;font-weight:700;letter-spacing:1.2px;color:#9b7a42;margin-bottom:10px}
+.aiQuestionsList{margin:0;padding-left:18px;display:grid;gap:8px}
+.aiQuestionsList li{font:italic 13px/1.45 "Playfair Display";color:#3a4b43}
+.aiActionText{font:500 14px/1.5 "Playfair Display";margin:0 0 12px;color:var(--ink)}
+.aiApplyBtn{border:1px solid #d5dbc8;background:#f2f6ee;color:#3b5247;border-radius:8px;padding:7px 13px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.aiApplyBtn:hover{background:#e3ebd8;color:var(--ink)}
+.aiApplyBtn.done{background:#dbe8d8;border-color:#b5d4ae;color:#285223;cursor:default}
+.aiTagsRow{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.aiTagPill{font-size:11px;background:#f0ebd9;color:#6b5321;padding:4px 10px;border-radius:14px;font-weight:600}
+.aiFooter{border-top:1px solid #eee8dc;margin-top:20px;padding-top:16px;display:flex;justify-content:flex-end}
+.aiRegenerate{border:0;background:transparent;color:#78837c;font-size:11px;cursor:pointer;padding:6px 10px}
+.aiRegenerate:hover{color:var(--ink);text-decoration:underline}
+

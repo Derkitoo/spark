@@ -9,6 +9,8 @@ create table if not exists public.ideas (
   audience text not null default '',
   potential text not null default '',
   next_action text not null default '',
+  tags text[] not null default '{}'::text[],
+  pinned boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
