@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="42" fill="#21352f"/>
+  <rect x="8" y="8" width="176" height="176" rx="34" fill="none" stroke="#3b564e" stroke-width="2" opacity="0.6"/>
+  <!-- Spark star background glow -->
+  <circle cx="96" cy="96" r="54" fill="#f4d89d" opacity="0.15"/>
+  <!-- Center Playfair 'S' badge -->
+  <rect x="52" y="52" width="88" height="88" rx="26" fill="#e8cd91"/>
+  <!-- Elegant Spark Emblem 'S' & Sparkle -->
+  <text x="96" y="112" font-family="'Playfair Display', Georgia, serif" font-size="62" font-weight="bold" font-style="italic" fill="#21352f" text-anchor="middle">S</text>
+  <path d="M 140 48 L 143 57 L 152 60 L 143 63 L 140 72 L 137 63 L 128 60 L 137 57 Z" fill="#f4d89d"/>
+</svg>
