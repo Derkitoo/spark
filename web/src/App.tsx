@@ -26,7 +26,7 @@ export default function Home() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [text, setText] = useState("");
   const [tagInput, setTagInput] = useState("");
-  const [view, setView] = useState<"today" | "library" | "connections" | "garden">("today");
+  const [view, setView] = useState<"today" | "library" | "connections" | "garden" | "mindmap">("today");
   const [query, setQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [editing, setEditing] = useState<Idea | null>(null);
@@ -234,6 +234,9 @@ export default function Home() {
           <button onClick={() => setView("library")} className={`nav ${view === "library" ? "active" : ""}`}>
             <span>▤</span>Mes idées <b>{ideas.length}</b>
           </button>
+          <button onClick={() => setView("mindmap")} className={`nav ${view === "mindmap" ? "active" : ""}`}>
+            <span>☸</span>Mindmap
+          </button>
           <button onClick={() => setView("connections")} className={`nav ${view === "connections" ? "active" : ""}`}>
             <span>◇</span>Connexions
           </button>
@@ -380,6 +383,16 @@ export default function Home() {
           </section>
         ) : view === "connections" ? (
           <Connections ideas={ideas} onOpen={setEditing} onCreate={() => setView("today")} />
+        ) : view === "mindmap" ? (
+          <MindmapView
+            ideas={ideas}
+            onOpen={setEditing}
+            onCreate={title => {
+              if (title) setText(title);
+              setView("today");
+            }}
+            categories={categories}
+          />
         ) : (
           <Garden ideas={ideas} onOpen={setEditing} onAdvance={advance} onCreate={() => setView("today")} />
         )}
@@ -1177,6 +1190,427 @@ function Garden({ ideas, onOpen, onAdvance, onCreate }: { ideas: Idea[]; onOpen:
           </div>
         </>
       )}
+    </section>
+  );
+}
+
+type AiNode = {
+  id: string;
+  label: string;
+  category: "action" | "angle" | "risk" | "audience";
+};
+
+function MindmapView({
+  ideas,
+  onOpen,
+  onCreate,
+  categories,
+}: {
+  ideas: Idea[];
+  onOpen: (i: Idea) => void;
+  onCreate: (title?: string) => void;
+  categories: string[];
+}) {
+  const [mode, setMode] = useState<"constellation" | "tree">("constellation");
+  const [selectedTreeId, setSelectedTreeId] = useState<string>(ideas[0]?.id ?? "");
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanDragging, setIsPanDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [aiSubNodes, setAiSubNodes] = useState<Record<string, AiNode[]>>({});
+  const [germinating, setGerminating] = useState(false);
+
+  useEffect(() => {
+    if (!selectedTreeId && ideas.length > 0) {
+      setSelectedTreeId(ideas[0].id);
+    }
+  }, [ideas, selectedTreeId]);
+
+  const selectedIdea = ideas.find(i => i.id === selectedTreeId) ?? ideas[0];
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsPanDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanDragging) {
+      setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsPanDragging(false);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    setZoom(z => Math.min(Math.max(z * factor, 0.4), 2.5));
+  };
+
+  function germinate(idea: Idea) {
+    setGerminating(true);
+    setTimeout(() => {
+      const existing = aiSubNodes[idea.id] ?? [];
+      const newNodes: AiNode[] = [
+        {
+          id: crypto.randomUUID(),
+          label: `Action : Prototype rapide de « ${idea.title.slice(0, 20)} »`,
+          category: "action",
+        },
+        {
+          id: crypto.randomUUID(),
+          label: `Angle : Version orientée ${idea.category === "Personnel" ? "minimaliste" : "communautaire"}`,
+          category: "angle",
+        },
+        {
+          id: crypto.randomUUID(),
+          label: `Public : Personnes cherchant une solution à ${idea.title.slice(0, 15)}`,
+          category: "audience",
+        },
+      ];
+      setAiSubNodes({ ...aiSubNodes, [idea.id]: [...existing, ...newNodes] });
+      setGerminating(false);
+    }, 600);
+  }
+
+  const center = { x: 600, y: 400 };
+  const categoryCoords: Record<string, { x: number; y: number }> = {};
+  categories.forEach((cat, idx) => {
+    const angle = (idx / categories.length) * 2 * Math.PI - Math.PI / 2;
+    categoryCoords[cat] = {
+      x: center.x + Math.cos(angle) * 240,
+      y: center.y + Math.sin(angle) * 220,
+    };
+  });
+
+  const ideaCoords: Record<string, { x: number; y: number }> = {};
+  categories.forEach(cat => {
+    const catIdeas = ideas.filter(i => i.category === cat);
+    const catCenter = categoryCoords[cat];
+    catIdeas.forEach((idea, idx) => {
+      const radius = idea.pinned ? 100 : 130 + (idx % 2) * 35;
+      const angle = (idx / Math.max(1, catIdeas.length)) * 2 * Math.PI + (idx * 0.4);
+      ideaCoords[idea.id] = {
+        x: catCenter.x + Math.cos(angle) * radius,
+        y: catCenter.y + Math.sin(angle) * radius,
+      };
+    });
+  });
+
+  const tagConnections: { id1: string; id2: string; tag: string }[] = [];
+  for (let i = 0; i < ideas.length; i++) {
+    for (let j = i + 1; j < ideas.length; j++) {
+      const tagsA = ideas[i].tags ?? [];
+      const tagsB = ideas[j].tags ?? [];
+      const common = tagsA.filter(t => tagsB.includes(t));
+      if (common.length > 0) {
+        tagConnections.push({ id1: ideas[i].id, id2: ideas[j].id, tag: common[0] });
+      }
+    }
+  }
+
+  return (
+    <section className="mindmapSection">
+      <span className="eyebrow">CARTOGRAPHIE SPATIALE & PENSÉE VISUELLE</span>
+      <div className="mindmapHead">
+        <div>
+          <h1>Carte Mentale & Constellation</h1>
+          <p>Explore et relie visuellement le réseau de tes pensées.</p>
+        </div>
+        <div className="modeSwitch">
+          <button
+            className={mode === "constellation" ? "active" : ""}
+            onClick={() => setMode("constellation")}
+          >
+            <span>🌌</span> Constellation Globale
+          </button>
+          <button
+            className={mode === "tree" ? "active" : ""}
+            onClick={() => setMode("tree")}
+          >
+            <span>🌿</span> Arborescence d'Idée
+          </button>
+        </div>
+      </div>
+
+      <div className="canvasWrapper">
+        <div className="canvasControls">
+          <button onClick={() => setZoom(z => Math.min(z + 0.15, 2.5))} title="Zoom avant">＋</button>
+          <button onClick={() => setZoom(z => Math.max(z - 0.15, 0.4))} title="Zoom arrière">－</button>
+          <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} title="Réinitialiser">↺ 100%</button>
+          {mode === "tree" && selectedIdea && (
+            <button
+              className="germinateBtn"
+              onClick={() => germinate(selectedIdea)}
+              disabled={germinating}
+            >
+              {germinating ? "✦ Germination en cours…" : "✦ Germer avec l'IA"}
+            </button>
+          )}
+        </div>
+
+        {mode === "tree" && (
+          <div className="treeSelector">
+            <label>Idée à explorer :</label>
+            <select
+              value={selectedTreeId}
+              onChange={e => setSelectedTreeId(e.target.value)}
+            >
+              {ideas.map(i => (
+                <option key={i.id} value={i.id}>
+                  {i.pinned ? "★ " : ""}{i.title} ({i.category})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {ideas.length === 0 ? (
+          <div className="mindmapEmpty">
+            <div className="orbit">☸</div>
+            <h2>Votre constellation attend vos premières étincelles</h2>
+            <p>Ajoutez des idées pour voir s'animer le réseau interactif.</p>
+            <button className="newIdea" onClick={() => onCreate()}>Capturer une idée</button>
+          </div>
+        ) : (
+          <div
+            className="canvasViewport"
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onWheel={handleWheel}
+          >
+            <svg className="mindSvg" width="100%" height="100%" viewBox="0 0 1200 800">
+              <defs>
+                <pattern id="dotGrid" width="30" height="30" patternUnits="userSpaceOnUse">
+                  <circle cx="15" cy="15" r="1.2" fill="#d1d6ce" />
+                </pattern>
+                <linearGradient id="sageGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#21352f" />
+                  <stop offset="100%" stopColor="#3d5e53" />
+                </linearGradient>
+                <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+                  <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#21352f" floodOpacity="0.08" />
+                </filter>
+              </defs>
+
+              <rect width="100%" height="100%" fill="#f6f5ef" />
+              <rect width="100%" height="100%" fill="url(#dotGrid)" />
+
+              <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+                {mode === "constellation" ? (
+                  <>
+                    {categories.map(cat => {
+                      const coords = categoryCoords[cat];
+                      return (
+                        <line
+                          key={`c-${cat}`}
+                          x1={center.x}
+                          y1={center.y}
+                          x2={coords.x}
+                          y2={coords.y}
+                          stroke="#c0c7be"
+                          strokeWidth="2"
+                          strokeDasharray="4 4"
+                        />
+                      );
+                    })}
+
+                    {ideas.map(idea => {
+                      const catPos = categoryCoords[idea.category];
+                      const ideaPos = ideaCoords[idea.id];
+                      if (!catPos || !ideaPos) return null;
+                      return (
+                        <path
+                          key={`link-${idea.id}`}
+                          d={`M ${catPos.x} ${catPos.y} Q ${(catPos.x + ideaPos.x) / 2} ${(catPos.y + ideaPos.y) / 2 - 20} ${ideaPos.x} ${ideaPos.y}`}
+                          stroke={idea.pinned ? "#d4af37" : "#899b92"}
+                          strokeWidth={idea.pinned ? "2.5" : "1.5"}
+                          opacity={idea.pinned ? "0.9" : "0.6"}
+                          fill="none"
+                        />
+                      );
+                    })}
+
+                    {tagConnections.map((conn, idx) => {
+                      const p1 = ideaCoords[conn.id1];
+                      const p2 = ideaCoords[conn.id2];
+                      if (!p1 || !p2) return null;
+                      return (
+                        <path
+                          key={`tagConn-${idx}`}
+                          d={`M ${p1.x} ${p1.y} Q ${(p1.x + p2.x) / 2 + 15} ${(p1.y + p2.y) / 2 - 25} ${p2.x} ${p2.y}`}
+                          stroke="#e0a96d"
+                          strokeWidth="1.2"
+                          strokeDasharray="3 3"
+                          opacity="0.75"
+                          fill="none"
+                        />
+                      );
+                    })}
+
+                    <g transform={`translate(${center.x}, ${center.y})`} filter="url(#shadow)">
+                      <circle r="36" fill="url(#sageGrad)" />
+                      <text textAnchor="middle" dy="6" fill="#f4d89d" fontSize="24" fontFamily="serif" fontWeight="bold">✦</text>
+                      <text textAnchor="middle" dy="48" fill="#21352f" fontSize="11" fontWeight="600" letterSpacing="1">JARDIN SPARK</text>
+                    </g>
+
+                    {categories.map(cat => {
+                      const pos = categoryCoords[cat];
+                      const count = ideas.filter(i => i.category === cat).length;
+                      return (
+                        <g key={`hub-${cat}`} transform={`translate(${pos.x}, ${pos.y})`} filter="url(#shadow)">
+                          <rect x="-65" y="-18" width="130" height="36" rx="18" fill="#e8eee7" stroke="#3d5e53" strokeWidth="1.5" />
+                          <text textAnchor="middle" dy="4" fill="#21352f" fontSize="12" fontWeight="700">{cat} ({count})</text>
+                        </g>
+                      );
+                    })}
+
+                    {ideas.map(idea => {
+                      const pos = ideaCoords[idea.id];
+                      if (!pos) return null;
+                      return (
+                        <g
+                          key={`ideaNode-${idea.id}`}
+                          transform={`translate(${pos.x}, ${pos.y})`}
+                          filter="url(#shadow)"
+                          style={{ cursor: "pointer" }}
+                          onClick={e => {
+                            e.stopPropagation();
+                            setSelectedTreeId(idea.id);
+                            onOpen(idea);
+                          }}
+                        >
+                          <rect
+                            x="-85"
+                            y="-22"
+                            width="170"
+                            height="44"
+                            rx="12"
+                            fill={idea.pinned ? "#fffdf5" : "#ffffff"}
+                            stroke={idea.pinned ? "#d4af37" : "#d0d7cf"}
+                            strokeWidth={idea.pinned ? "2" : "1"}
+                          />
+                          {idea.pinned && (
+                            <text x="-75" y="-6" fill="#d4af37" fontSize="12">★</text>
+                          )}
+                          <text
+                            x={idea.pinned ? "-58" : "-72"}
+                            y="2"
+                            fill="#21352f"
+                            fontSize="11"
+                            fontWeight="600"
+                          >
+                            {idea.title.length > 20 ? idea.title.slice(0, 18) + "…" : idea.title}
+                          </text>
+                          <text x="-72" y="15" fill="#657770" fontSize="9">
+                            {idea.status} • {idea.tags?.length ? `#${idea.tags[0]}` : idea.category}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </>
+                ) : (
+                  selectedIdea && (
+                    <g transform="translate(600, 350)">
+                      <g filter="url(#shadow)">
+                        <rect x="-140" y="-35" width="280" height="70" rx="16" fill="url(#sageGrad)" stroke="#172722" strokeWidth="2" />
+                        {selectedIdea.pinned && <text x="-125" y="-10" fill="#f4d89d" fontSize="14">★</text>}
+                        <text textAnchor="middle" y="-5" fill="#ffffff" fontSize="15" fontFamily="'Playfair Display', Georgia, serif" fontWeight="700">
+                          {selectedIdea.title.length > 30 ? selectedIdea.title.slice(0, 28) + "…" : selectedIdea.title}
+                        </text>
+                        <text textAnchor="middle" y="16" fill="#d0dfda" fontSize="11">
+                          {selectedIdea.category} • {selectedIdea.status}
+                        </text>
+                      </g>
+
+                      {[
+                        { key: "nextAction", label: "🎯 PROCHAINE ACTION", value: selectedIdea.nextAction || "Définir la première étape", angle: -140, color: "#466b5d" },
+                        { key: "problem", label: "⚡ LE DÉCLIC", value: selectedIdea.problem || "Définir le problème à résoudre", angle: -40, color: "#8a5a36" },
+                        { key: "audience", label: "👥 PUBLIC CIBLE", value: selectedIdea.audience || "Préciser le public concerné", angle: 40, color: "#2b5b75" },
+                        { key: "potential", label: "💎 VALEUR / POTENTIEL", value: selectedIdea.potential || "Rédiger l'impact désiré", angle: 140, color: "#6b4668" },
+                      ].map(branch => {
+                        const rad = (branch.angle * Math.PI) / 180;
+                        const bx = Math.cos(rad) * 280;
+                        const by = Math.sin(rad) * 190;
+                        return (
+                          <g key={branch.key}>
+                            <path
+                              d={`M 0 0 Q ${bx / 2} ${by / 2 - 20} ${bx} ${by}`}
+                              stroke={branch.color}
+                              strokeWidth="2"
+                              fill="none"
+                              opacity="0.8"
+                            />
+                            <g transform={`translate(${bx}, ${by})`} filter="url(#shadow)">
+                              <rect x="-110" y="-28" width="220" height="56" rx="10" fill="#ffffff" stroke={branch.color} strokeWidth="1.5" />
+                              <text x="-98" y="-10" fill={branch.color} fontSize="9" fontWeight="700" letterSpacing="0.8">
+                                {branch.label}
+                              </text>
+                              <text x="-98" y="10" fill="#21352f" fontSize="11" fontWeight="500">
+                                {branch.value.length > 28 ? branch.value.slice(0, 26) + "…" : branch.value}
+                              </text>
+                            </g>
+                          </g>
+                        );
+                      })}
+
+                      {selectedIdea.tags && selectedIdea.tags.length > 0 && (
+                        <g transform="translate(0, 230)" filter="url(#shadow)">
+                          <line x1="0" y1="-195" x2="0" y2="0" stroke="#74817c" strokeWidth="1.5" strokeDasharray="3 3" />
+                          <rect x="-120" y="-18" width="240" height="36" rx="18" fill="#e8eee7" stroke="#74817c" strokeWidth="1" />
+                          <text textAnchor="middle" y="4" fill="#21352f" fontSize="11" fontWeight="600">
+                            🏷️ Tags : {selectedIdea.tags.map(t => "#" + t).join(" ")}
+                          </text>
+                        </g>
+                      )}
+
+                      {(aiSubNodes[selectedIdea.id] ?? []).map((aiNode, idx) => {
+                        const angle = 90 + (idx - 1) * 45;
+                        const rad = (angle * Math.PI) / 180;
+                        const ax = Math.cos(rad) * 320;
+                        const ay = Math.sin(rad) * 220;
+                        return (
+                          <g key={aiNode.id}>
+                            <path
+                              d={`M 0 0 Q ${ax / 2} ${ay / 2} ${ax} ${ay}`}
+                              stroke="#c79955"
+                              strokeWidth="2"
+                              strokeDasharray="4 2"
+                              fill="none"
+                            />
+                            <g transform={`translate(${ax}, ${ay})`} filter="url(#shadow)">
+                              <rect x="-125" y="-30" width="250" height="60" rx="12" fill="#fffdf5" stroke="#c79955" strokeWidth="2" />
+                              <text x="-112" y="-12" fill="#a87428" fontSize="9" fontWeight="700">✦ IDÉE GERMÉE IA</text>
+                              <text x="-112" y="8" fill="#21352f" fontSize="10" fontWeight="500">
+                                {aiNode.label.length > 34 ? aiNode.label.slice(0, 32) + "…" : aiNode.label}
+                              </text>
+                              <text
+                                x="110"
+                                y="20"
+                                textAnchor="end"
+                                fill="#466b5d"
+                                fontSize="9"
+                                fontWeight="700"
+                                style={{ cursor: "pointer" }}
+                                onClick={() => onCreate(aiNode.label)}
+                              >
+                                ＋ Convertir en idée
+                              </text>
+                            </g>
+                          </g>
+                        );
+                      })}
+                    </g>
+                  )
+                )}
+              </g>
+            </svg>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

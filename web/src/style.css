@@ -78,3 +78,32 @@
 .aiRegenerate{border:0;background:transparent;color:#78837c;font-size:11px;cursor:pointer;padding:6px 10px}
 .aiRegenerate:hover{color:var(--ink);text-decoration:underline}
 
+/* Mindmap & Constellation Section */
+.mindmapSection{max-width:1180px;margin:0 auto;padding:55px 24px}
+.mindmapHead{display:flex;justify-content:space-between;align-items:flex-end;margin:10px 0 24px}
+.mindmapHead h1{font:500 42px "Playfair Display",serif;margin:0}
+.mindmapHead p{color:var(--muted);font-size:13px;margin:6px 0 0}
+.modeSwitch{display:flex;background:#e4e7df;border-radius:12px;padding:4px;gap:4px}
+.modeSwitch button{border:0;background:transparent;padding:8px 14px;border-radius:9px;font-size:11px;font-weight:600;color:#616e67;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .18s}
+.modeSwitch button.active{background:#ffffff;color:var(--ink);box-shadow:0 2px 8px #21352f14}
+
+.canvasWrapper{position:relative;background:#ffffff;border:1px solid var(--line);border-radius:18px;overflow:hidden;height:640px;box-shadow:0 8px 30px #21352f0a}
+.canvasControls{position:absolute;top:16px;right:16px;z-index:10;display:flex;align-items:center;gap:6px;background:#ffffffdd;backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:10px;padding:5px;box-shadow:0 4px 15px #0000000a}
+.canvasControls button{border:1px solid #dcdfd8;background:#f8f9f5;color:var(--ink);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:650;cursor:pointer;transition:background .15s}
+.canvasControls button:hover{background:#ebeee8}
+.canvasControls .germinateBtn{background:#f7eedb;border-color:#c8b07e;color:#78581e}
+.canvasControls .germinateBtn:hover{background:#f2e3c2}
+
+.treeSelector{position:absolute;top:16px;left:16px;z-index:10;display:flex;align-items:center;gap:10px;background:#ffffffdd;backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:10px;padding:7px 14px;box-shadow:0 4px 15px #0000000a}
+.treeSelector label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.treeSelector select{border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;color:var(--ink);outline:0;cursor:pointer}
+
+.canvasViewport{width:100%;height:100%;cursor:grab;user-select:none}
+.canvasViewport:active{cursor:grabbing}
+.mindSvg{width:100%;height:100%;display:block}
+
+.mindmapEmpty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px}
+.mindmapEmpty h2{font:500 24px "Playfair Display";margin:16px 0 6px}
+.mindmapEmpty p{color:var(--muted);font-size:12px;margin:0 0 16px}
+
+
