@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
 export type Idea = {
@@ -23,7 +22,14 @@ const categories = ["Personnel", "Projet", "Créativité", "Travail", "À partag
 const statuses = ["Capturée", "À explorer", "Prometteuse", "En projet", "Réalisée"];
 
 export default function Home() {
-  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [ideas, setIdeas] = useState<Idea[]>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("etincelle-ideas-v1") || "[]");
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
   const [text, setText] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [view, setView] = useState<"today" | "library" | "connections" | "garden" | "mindmap">("today");
@@ -32,84 +38,86 @@ export default function Home() {
   const [editing, setEditing] = useState<Idea | null>(null);
   const [maturing, setMaturing] = useState<Idea | null>(null);
   const [aiIdea, setAiIdea] = useState<Idea | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
-      setAuthLoading(false);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setAuthLoading(false);
-    });
-    return () => data.subscription.unsubscribe();
+    if (localStorage.getItem("spark-cloud-import-v1") === "done" || !navigator.onLine) return;
+    void recoverCloudIdeas(false);
   }, []);
 
-  async function syncToSupabase(ideasToSync: Idea[], userId: string) {
-    if (!ideasToSync.length) return true;
-    const fullRows = ideasToSync.map(i => toRow(i, userId));
-    const { error: fullErr } = await supabase.from("ideas").upsert(fullRows);
-    if (fullErr) {
-      // Fallback: try core rows without tags/pinned if DB schema is pending migration
-      const coreRows = ideasToSync.map(i => toRowCore(i, userId));
-      const { error: coreErr } = await supabase.from("ideas").upsert(coreRows);
-      if (coreErr) {
-        console.error("Supabase sync error:", coreErr.message);
-        return false;
+  async function recoverCloudIdeas(interactive: boolean) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        if (interactive) {
+          await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: { redirectTo: location.href },
+          });
+        }
+        return;
       }
+      const { data, error: cloudError } = await supabase.from("ideas").select("*");
+      if (cloudError) throw cloudError;
+      const cloudIdeas: Idea[] = (data || []).map(row => ({
+        id: String(row.id), title: String(row.title), content: String(row.content || ""),
+        category: String(row.category || "Personnel"), status: String(row.status || "Capturée"),
+        problem: String(row.problem || ""), audience: String(row.audience || ""),
+        potential: String(row.potential || ""), nextAction: String(row.next_action || ""),
+        tags: Array.isArray(row.tags) ? row.tags : [], pinned: Boolean(row.pinned),
+        createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+      }));
+      const local: Idea[] = JSON.parse(localStorage.getItem("etincelle-ideas-v1") || "[]");
+      const merged = new Map<string, Idea>(local.map(idea => [idea.id, idea]));
+      cloudIdeas.forEach(idea => {
+        const previous = merged.get(idea.id);
+        if (!previous || new Date(idea.updatedAt).getTime() > new Date(previous.updatedAt).getTime()) merged.set(idea.id, idea);
+      });
+      persist([...merged.values()]);
+      localStorage.setItem("spark-cloud-import-v1", "done");
+    } catch {
+      if (interactive) setError("Récupération impossible pour le moment. Réessaie avec une connexion Internet.");
     }
-    return true;
   }
 
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
-    (async () => {
-      setLoading(true);
-      setSyncing(true);
-      try {
-        const saved = localStorage.getItem("etincelle-ideas-v1");
-        const local: Idea[] = saved ? JSON.parse(saved) : [];
-        if (local.length) {
-          await syncToSupabase(local, user.id);
-        }
-        const { data, error: loadError } = await supabase.from("ideas").select("*").order("updated_at", { ascending: false });
-        if (loadError) throw loadError;
-        const synced = (data ?? []).map(fromRow);
-        if (active) {
-          setIdeas(synced);
-          localStorage.setItem("etincelle-ideas-v1", JSON.stringify(synced));
-        }
-      } catch (err) {
-        console.warn("Sync notice:", err);
-        if (active) setError("La synchronisation a rencontré un problème.");
-      } finally {
-        if (active) {
-          setLoading(false);
-          setSyncing(false);
-        }
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [user]);
-
   function persist(next: Idea[]) {
-    setIdeas(next);
-    localStorage.setItem("etincelle-ideas-v1", JSON.stringify(next));
-    if (user && next.length) {
-      setSyncing(true);
-      void syncToSupabase(next, user.id).then(ok => {
-        if (!ok) setError("La synchronisation a rencontré un problème.");
-        setSyncing(false);
+    try {
+      localStorage.setItem("etincelle-ideas-v1", JSON.stringify(next));
+      setIdeas(next);
+    } catch {
+      setError("Enregistrement impossible sur cet appareil. Vérifie l’espace disponible et exporte tes idées.");
+    }
+  }
+
+  function exportIdeas() {
+    const blob = new Blob([JSON.stringify({ format: "spark-ideas-v1", ideas }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `spark-idees-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importIdeas(file: File) {
+    try {
+      const data = JSON.parse(await file.text());
+      if (data.format !== "spark-ideas-v1" || !Array.isArray(data.ideas)) throw new Error("Invalid backup");
+      const valid: Idea[] = (data.ideas as unknown[]).filter((idea: unknown): idea is Idea =>
+        !!idea && typeof idea === "object" &&
+        typeof (idea as Idea).id === "string" && typeof (idea as Idea).title === "string"
+      );
+      const merged = new Map<string, Idea>(ideas.map((idea: Idea) => [idea.id, idea]));
+      valid.forEach(idea => {
+        const previous = merged.get(idea.id);
+        if (!previous || Number(idea.updatedAt) > Number(previous.updatedAt)) merged.set(idea.id, idea);
       });
+      persist([...merged.values()]);
+      setError("");
+    } catch {
+      setError("Ce fichier n’est pas une sauvegarde Spark valide.");
     }
   }
 
@@ -194,9 +202,7 @@ export default function Home() {
   function remove() {
     if (!editing || !confirm("Supprimer cette idée ?")) return;
     const id = editing.id;
-    setIdeas(ideas.filter(i => i.id !== id));
-    localStorage.setItem("etincelle-ideas-v1", JSON.stringify(ideas.filter(i => i.id !== id)));
-    if (user) void supabase.from("ideas").delete().eq("id", id);
+    persist(ideas.filter(i => i.id !== id));
     setEditing(null);
   }
 
@@ -219,9 +225,6 @@ export default function Home() {
     .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || Number(b.updatedAt) - Number(a.updatedAt));
 
   const date = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
-
-  if (authLoading) return <div className="authLoading"><span>S</span><p>Ouverture de Spark…</p></div>;
-  if (!user) return <AuthScreen />;
 
   return (
     <main className="shell">
@@ -252,22 +255,38 @@ export default function Home() {
               <small>Ton jardin prend vie</small>
             </div>
           </div>
-          <div className="privacy">● Synchronisation active</div>
-          <button className="account" onClick={() => supabase.auth.signOut()}>
-            <span>{(user.user_metadata?.full_name ?? user.email ?? "S").slice(0, 1).toUpperCase()}</span>
-            <div>
-              <strong>{user.user_metadata?.full_name ?? "Mon compte"}</strong>
-              <small>{user.email}</small>
-            </div>
-            <i>Déconnexion</i>
-          </button>
+          <div className="privacy">● Données privées sur cet appareil</div>
+          <button className="backupButton" onClick={exportIdeas}>↓ Exporter mes idées</button>
+          <label className="backupButton">↑ Importer une sauvegarde
+            <input type="file" accept=".json,application/json" hidden onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) void importIdeas(file);
+              e.target.value = "";
+            }} />
+          </label>
         </div>
       </aside>
 
       <section className="content">
         <header>
           <p>{date}</p>
-          <span className="cloud">{syncing ? "↻ Synchronisation…" : "✓ Synchronisé"}</span>
+          <div className="headerTools">
+            <span className="cloud">✓ Disponible hors ligne</span>
+            <details className="backupMenu">
+              <summary>Sauvegarde</summary>
+              <div>
+                <button onClick={exportIdeas}>↓ Exporter mes idées</button>
+                <button onClick={() => void recoverCloudIdeas(true)}>↧ Récupérer mes anciennes idées</button>
+                <label>↑ Importer un fichier
+                  <input type="file" accept=".json,application/json" hidden onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) void importIdeas(file);
+                    e.target.value = "";
+                  }} />
+                </label>
+              </div>
+            </details>
+          </div>
         </header>
 
         {error && (
@@ -466,7 +485,7 @@ export default function Home() {
                   setAiIdea(editing);
                 }}
               >
-                ✦ Étincelle IA
+                ✦ Pistes créatives
               </button>
               <button
                 type="button"
@@ -507,104 +526,6 @@ export default function Home() {
           }}
         />
       )}
-    </main>
-  );
-}
-
-function toRow(idea: Idea, userId: string) {
-  return {
-    id: idea.id,
-    user_id: userId,
-    title: idea.title,
-    content: idea.content,
-    category: idea.category,
-    status: idea.status,
-    problem: idea.problem ?? "",
-    audience: idea.audience ?? "",
-    potential: idea.potential ?? "",
-    next_action: idea.nextAction ?? "",
-    tags: idea.tags ?? [],
-    pinned: idea.pinned ?? false,
-    created_at: new Date(idea.createdAt).toISOString(),
-    updated_at: new Date(idea.updatedAt).toISOString(),
-  };
-}
-
-function toRowCore(idea: Idea, userId: string) {
-  return {
-    id: idea.id,
-    user_id: userId,
-    title: idea.title,
-    content: idea.content,
-    category: idea.category,
-    status: idea.status,
-    problem: idea.problem ?? "",
-    audience: idea.audience ?? "",
-    potential: idea.potential ?? "",
-    next_action: idea.nextAction ?? "",
-    created_at: new Date(idea.createdAt).toISOString(),
-    updated_at: new Date(idea.updatedAt).toISOString(),
-  };
-}
-
-function fromRow(row: Record<string, unknown>): Idea {
-  return {
-    id: String(row.id),
-    title: String(row.title),
-    content: String(row.content ?? ""),
-    category: String(row.category ?? "Personnel"),
-    status: String(row.status ?? "Capturée"),
-    problem: String(row.problem ?? ""),
-    audience: String(row.audience ?? ""),
-    potential: String(row.potential ?? ""),
-    nextAction: String(row.next_action ?? ""),
-    tags: Array.isArray(row.tags) ? (row.tags as string[]) : [],
-    pinned: Boolean(row.pinned ?? false),
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-  };
-}
-
-function AuthScreen() {
-  const [busy, setBusy] = useState(false);
-  const [authError, setAuthError] = useState("");
-
-  async function login() {
-    setBusy(true);
-    setAuthError("");
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: "https://derkitoo.github.io/spark/" },
-    });
-    if (error) {
-      setAuthError("La connexion Google n’a pas pu démarrer.");
-      setBusy(false);
-    }
-  }
-
-  return (
-    <main className="authPage">
-      <section className="authBrand">
-        <div className="brand"><span>S</span> Spark</div>
-        <div>
-          <span className="eyebrow">CAPTURE THE SPARK. GROW THE IDEA.</span>
-          <h1>Un espace calme pour les idées qui comptent.</h1>
-          <p>Capture une pensée, relie-la aux autres et transforme-la en prochaine action.</p>
-        </div>
-        <div className="authQuote">“Les grandes idées commencent souvent par une note minuscule.”</div>
-      </section>
-      <section className="authCard">
-        <div>
-          <span className="authMark">S</span>
-          <h2>Bienvenue dans Spark</h2>
-          <p>Connecte-toi pour retrouver tes idées sur tous tes appareils.</p>
-          <button onClick={login} disabled={busy}>
-            <b>G</b>{busy ? "Connexion…" : "Continuer avec Google"}
-          </button>
-          {authError && <small className="authError">{authError}</small>}
-          <small>En continuant, tes idées restent privées et liées uniquement à ton compte.</small>
-        </div>
-      </section>
     </main>
   );
 }
@@ -703,7 +624,7 @@ function IdeaSection({
   );
 }
 
-/** Assistant IA & Suggestions créatives (Mode Autonome + Mode Clé API) */
+/** Suggestions créatives générées entièrement sur l'appareil. */
 function SparkAIAssistant({
   idea,
   onClose,
@@ -715,8 +636,6 @@ function SparkAIAssistant({
   onApplyAction: (action: string) => void;
   onApplyTags: (tags: string[]) => void;
 }) {
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("spark_ai_api_key") || "");
-  const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(false);
   const [actionDone, setActionDone] = useState(false);
   const [tagsDone, setTagsDone] = useState(false);
@@ -733,69 +652,17 @@ function SparkAIAssistant({
     generateSuggestions();
   }, [idea]);
 
-  async function generateSuggestions() {
+  function generateSuggestions() {
     setLoading(true);
     setActionDone(false);
     setTagsDone(false);
 
-    // If an API key is stored, try LLM API call first
-    if (apiKey.trim()) {
-      try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey.trim()}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "Tu es l'assistant créatif de Spark (Étincelle). Réponds en JSON strict avec les clés: boostQuestions (tableau de 2 questions de relance), suggestedAction (1 action concrète de 20 min), suggestedTags (tableau de 3-4 tags pertinents sans le symbole #), summary (1 phrase d'encouragement).",
-              },
-              {
-                role: "user",
-                content: `Titre: ${idea.title}\nContenu: ${idea.content}\nCatégorie: ${idea.category}`,
-              },
-            ],
-            response_format: { type: "json_object" },
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const parsed = JSON.parse(data.choices[0].message.content);
-          setSuggestions({
-            boostQuestions: parsed.boostQuestions || [],
-            suggestedAction: parsed.suggestedAction || "",
-            suggestedTags: parsed.suggestedTags || [],
-            summary: parsed.summary || "",
-          });
-          setLoading(false);
-          return;
-        }
-      } catch {
-        // Fallback to native local generator
-      }
-    }
-
-    // Native Smart Generator (Offline fallback)
+    // Local suggestions work even when the device is offline.
     setTimeout(() => {
       const localSuggestions = generateLocalSuggestions(idea);
       setSuggestions(localSuggestions);
       setLoading(false);
     }, 400);
-  }
-
-  function saveApiKey(val: string) {
-    setApiKey(val);
-    if (val.trim()) {
-      localStorage.setItem("spark_ai_api_key", val.trim());
-    } else {
-      localStorage.removeItem("spark_ai_api_key");
-    }
   }
 
   return (
@@ -805,42 +672,20 @@ function SparkAIAssistant({
           <div className="aiTitleRow">
             <span className="aiIcon">✦</span>
             <div>
-              <span className="eyebrow">ASSISTANT ÉTINCELLE IA</span>
+              <span className="eyebrow">PISTES CRÉATIVES HORS LIGNE</span>
               <h2>{idea.title}</h2>
             </div>
           </div>
           <div className="aiHeaderActions">
-            <button
-              className="aiConfigBtn"
-              onClick={() => setShowSettings(!showSettings)}
-              title="Configurer une clé API LLM"
-            >
-              ⚙ {apiKey ? "Clé API active" : "Mode local"}
-            </button>
             <button className="closeModal" onClick={onClose}>×</button>
           </div>
         </div>
-
-        {showSettings && (
-          <div className="aiSettingsPanel">
-            <h4>Configuration Clé API (Optionnel)</h4>
-            <p>Saisis ta clé OpenAI (ou laisse vide pour utiliser l'IA native hors-ligne intégrée) :</p>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={e => saveApiKey(e.target.value)}
-              placeholder="sk-..."
-              className="apiKeyInput"
-            />
-            <small>La clé est stockée uniquement sur cet appareil.</small>
-          </div>
-        )}
 
         <div className="aiBody">
           {loading ? (
             <div className="aiLoading">
               <span className="sparkleSpinner">✦</span>
-              <p>L'étincelle IA formule des pistes pour ta pensée…</p>
+              <p>Spark formule des pistes pour ta pensée…</p>
             </div>
           ) : suggestions ? (
             <div className="aiContent">
@@ -1345,7 +1190,7 @@ function MindmapView({
               onClick={() => germinate(selectedIdea)}
               disabled={germinating}
             >
-              {germinating ? "✦ Germination en cours…" : "✦ Germer avec l'IA"}
+              {germinating ? "✦ Germination en cours…" : "✦ Faire germer une piste"}
             </button>
           )}
         </div>
