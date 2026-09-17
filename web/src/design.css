@@ -1,0 +1,200 @@
+/* Spark design system — the legacy component styles are refined here. */
+:root {
+  color-scheme: light;
+  --paper: #f7f8f5;
+  --surface: #ffffff;
+  --surface-soft: #eef2ec;
+  --ink: #1e3028;
+  --muted: #53665b;
+  --sage: #315d45;
+  --accent: #a66b2d;
+  --line: #d5dfd4;
+  --danger: #a53c36;
+  --success: #256c43;
+  --shadow: 0 12px 36px rgb(20 45 28 / 8%);
+  --radius-sm: .625rem;
+  --radius-md: 1rem;
+  --space-1: .25rem;
+  --space-2: .5rem;
+  --space-3: .75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --motion: 180ms ease;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #121b17;
+  --surface: #1e2b23;
+  --surface-soft: #283b2e;
+  --ink: #f0f5ed;
+  --muted: #b7c9ba;
+  --sage: #8bc9a0;
+  --accent: #e8b771;
+  --line: #415547;
+  --danger: #f09a90;
+  --success: #a9e0b5;
+  --shadow: 0 14px 38px rgb(0 0 0 / 22%);
+}
+
+html { font-size: 16px; }
+body { background: var(--paper); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; overflow-x: clip; }
+button, input, textarea, select { font: inherit; }
+button, summary, label { -webkit-tap-highlight-color: transparent; }
+button, .nav, .ideaCard, .backupMenu summary, .backupMenu label, input, textarea, select {
+  transition: background-color var(--motion), color var(--motion), border-color var(--motion), box-shadow var(--motion), transform var(--motion);
+}
+:where(button, input, textarea, select, summary, a, [role="button"]):focus-visible {
+  outline: 3px solid var(--accent) !important;
+  outline-offset: 3px !important;
+}
+:where(button, input, textarea, select):disabled { cursor: not-allowed; opacity: .55; }
+.shell, .content { min-width: 0; }
+.content { margin: 0; width: 100%; }
+
+/* Mobile-first navigation drawer. */
+.sidebar {
+  inset: 0 auto 0 0;
+  width: min(19rem, 84vw);
+  height: 100dvh;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-5);
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  transform: translateX(-105%);
+  visibility: hidden;
+  transition: transform 240ms ease;
+  z-index: 31;
+  box-shadow: var(--shadow);
+}
+.sidebar.isOpen { transform: translateX(0); visibility: visible; }
+.menuScrim { position: fixed; inset: 0; z-index: 30; border: 0; background: rgb(12 25 17 / 55%); cursor: pointer; }
+.menuClose { position: absolute; top: var(--space-5); right: var(--space-5); width: 2.5rem; height: 2.5rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-soft); font-size: 1.5rem; cursor: pointer; }
+.brand { display: flex; margin: 0 0 var(--space-6); color: var(--ink); font-size: 1.5rem; }
+.brand span { background: var(--sage); color: var(--surface); }
+.sidebar nav { display: grid; gap: var(--space-2); width: 100%; }
+.nav { justify-content: flex-start; min-height: 3rem; width: 100%; border: 1px solid transparent; padding: .75rem 1rem; border-radius: var(--radius-sm); font-size: .9375rem !important; color: var(--ink); }
+.nav span { display: inline; width: 1.5rem; font-size: 1.25rem; }
+.nav b { display: inline; margin-left: auto; background: var(--surface-soft); color: var(--ink); font-size: .75rem; }
+.nav:hover { background: var(--surface-soft); }
+.nav.active { background: var(--surface-soft); border-color: var(--line); box-shadow: none; color: var(--ink); }
+.sidebarFoot { display: block; }
+.streak { background: var(--surface-soft); border-radius: var(--radius-md); margin-bottom: var(--space-4); }
+.streak small, .privacy { color: var(--muted); font-size: .75rem; }
+.themeToggle, .backupButton { display: block; width: 100%; min-height: 2.75rem; padding: .7rem .8rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); text-align: left; font-size: .875rem; cursor: pointer; }
+.themeToggle:hover, .backupButton:hover { background: var(--surface-soft); }
+
+.content > header { min-height: 4.5rem; height: auto; padding: var(--space-3) var(--space-4); gap: var(--space-3); border-bottom: 1px solid var(--line); background: var(--surface); }
+.headerLead, .headerTools { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.headerLead p { display: none; margin: 0; color: var(--muted); font-size: .75rem; }
+.menuTrigger, .themeHeader { flex: none; width: 2.75rem; height: 2.75rem; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font-size: 1.25rem; cursor: pointer; }
+.cloud { color: var(--success); font-size: .75rem; font-weight: 650; white-space: nowrap; }
+.backupMenu { font-size: .8125rem; }
+.backupMenu summary { min-height: 2.75rem; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); padding: .5rem .75rem; }
+.backupMenu > div { top: calc(100% + .4rem); width: min(17rem, 80vw); background: var(--surface); border-color: var(--line); box-shadow: var(--shadow); }
+.backupMenu button, .backupMenu label { height: auto; min-height: 2.75rem; background: var(--surface); color: var(--ink); font-size: .8125rem; }
+.backupMenu button:hover, .backupMenu label:hover { background: var(--surface-soft); }
+
+/* Content hierarchy and surfaces. */
+.hero, .library, .connections, .garden, .mindmapSection { padding: 2.5rem var(--space-4); }
+.hero h1, .library h1, .connections h1, .garden h1, .mindmapHead h1 { color: var(--ink); font-family: Georgia, serif; font-size: clamp(1.75rem, 7vw, 3.25rem); line-height: 1.1; }
+.eyebrow, .sectionTitle span { color: var(--accent); font-size: .75rem; letter-spacing: .1em; }
+.hero > p, .libraryHead p, .connectionsHead p, .gardenHead p, .mindmapHead p { color: var(--muted); font-size: .9375rem; line-height: 1.55; }
+.capture, .ideaCard, .search, .themePill, .pair, .gardenStats > div, .growthStage, .canvasWrapper, .modal, .aiModal, .aiCard { background: var(--surface); border-color: var(--line); color: var(--ink); box-shadow: var(--shadow); }
+.capture, .ideaCard, .pair, .growthStage, .canvasWrapper { border-radius: var(--radius-md); }
+.capture textarea, .search input, .contentInput, .titleInput, .tagField, .tagInput, .question textarea, .fields select, .treeSelector select { background: var(--surface); color: var(--ink); border-color: var(--line); }
+.tagRow { background: var(--surface-soft); border-color: var(--line); }
+.tagField { background: transparent; }
+.capture textarea::placeholder, .search input::placeholder { color: var(--muted); }
+.save, .newIdea, .focusActions .grow, .questionActions .continue { min-height: 2.75rem; background: var(--sage); color: var(--surface); font-size: .875rem; font-weight: 650; border-radius: var(--radius-sm); }
+.save:hover:not(:disabled), .newIdea:hover:not(:disabled), .focusActions .grow:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.08); }
+.ideaGrid, .library .ideaGrid { grid-template-columns: 1fr; }
+.ideaCard { min-height: 11rem; }
+.ideaCard h3 { color: var(--ink); font-size: 1.125rem; }
+.ideaCard > p, .cardBottom span, .category, .shortcut, .hint, .themePill small, .why, .gardenStats small, .stageBlank { color: var(--muted); font-size: .75rem; }
+.empty, .connectionEmpty, .gardenEmpty { border-color: var(--line); color: var(--muted); padding: var(--space-5); }
+.empty strong, .connectionEmpty h2, .gardenEmpty h2 { color: var(--ink); }
+.emptyIcon { display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%; background: var(--surface-soft); color: var(--accent); font-size: 1.5rem; }
+.skeletonGrid { display: grid; grid-template-columns: 1fr; gap: var(--space-4); }
+.skeletonCard { min-height: 11rem; border: 1px solid var(--line); border-radius: var(--radius-md); background: linear-gradient(100deg, var(--surface-soft) 20%, var(--surface) 45%, var(--surface-soft) 70%); background-size: 200% 100%; animation: shimmer 1.5s linear infinite; }
+@keyframes shimmer { to { background-position-x: -200%; } }
+.libraryHead, .connectionsHead, .gardenHead, .mindmapHead { flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; }
+.themeRow, .gardenStats, .growthPath, .connectionLayout { grid-template-columns: 1fr; }
+.gardenFocus, .connectionStat, .modeSwitch, .nextPreview, .aiSettingsPanel, .stageIdeas article { background: var(--surface-soft); border-color: var(--line); }
+.modalBack, .aiModalBack { padding: var(--space-3); }
+.modal, .aiModal { max-height: calc(100dvh - 1.5rem); overflow-y: auto; }
+.modalActions { flex-wrap: wrap; }
+.canvasWrapper { height: min(34rem, 70dvh); }
+.mindmapHead, .modeSwitch { min-width: 0; }
+.modeSwitch { max-width: 100%; overflow-x: auto; }
+.modeSwitch button { flex: none; }
+.modeSwitch button { color: var(--muted); }
+.modeSwitch button.active { background: var(--sage); color: var(--surface); }
+.treeSelector { max-width: calc(100% - 2rem); background: var(--surface); }
+.treeSelector select { max-width: 9rem; }
+.canvasControls { top: auto; right: var(--space-3); bottom: var(--space-3); max-width: calc(100% - 1.5rem); overflow-x: auto; background: var(--surface); }
+.canvasControls button { flex: none; }
+.notice, .error { position: fixed; top: 5rem; right: var(--space-4); left: var(--space-4); z-index: 40; padding: .875rem 1rem; border-radius: var(--radius-sm); box-shadow: var(--shadow); font-size: .875rem; }
+.notice { background: #256c43; color: #fff; }
+.error { background: #8c302a; color: #fff; }
+
+@media (max-width: 359px) {
+  .cloud { font-size: 0; }
+  .cloud::after { content: "Hors ligne"; font-size: .75rem; }
+  .content > header { padding-inline: .625rem; }
+}
+
+@media (min-width: 640px) {
+  .content > header { padding-inline: var(--space-6); }
+  .headerLead p { display: block; }
+  .hero, .library, .connections, .garden, .mindmapSection { padding-inline: var(--space-6); }
+  .ideaGrid, .library .ideaGrid, .themeRow, .gardenStats, .growthPath { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .skeletonGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .notice, .error { left: auto; width: min(24rem, calc(100vw - 2rem)); }
+  .canvasWrapper { height: 38rem; }
+}
+
+@media (min-width: 1024px) {
+  .sidebar { width: 17rem; transform: none; visibility: visible; box-shadow: none; }
+  .menuClose, .menuTrigger, .menuScrim { display: none; }
+  .content { width: calc(100% - 17rem); margin-left: 17rem; }
+  .content > header { padding-inline: 3rem; }
+  .hero, .library, .connections, .garden, .mindmapSection { padding-inline: 2.5rem; }
+  .ideaGrid, .library .ideaGrid, .gardenStats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .skeletonGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .themeRow { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .connectionLayout { grid-template-columns: minmax(0, 1.6fr) minmax(15rem, .8fr); }
+  .growthPath { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+/* Dark theme coverage for legacy sections. */
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] .content > header,
+:root[data-theme="dark"] .capture,
+:root[data-theme="dark"] .ideaCard,
+:root[data-theme="dark"] .modal,
+:root[data-theme="dark"] .aiModal,
+:root[data-theme="dark"] .aiCard,
+:root[data-theme="dark"] .search,
+:root[data-theme="dark"] .themePill,
+:root[data-theme="dark"] .pair,
+:root[data-theme="dark"] .growthStage,
+:root[data-theme="dark"] .gardenStats > div,
+:root[data-theme="dark"] .canvasWrapper,
+:root[data-theme="dark"] .matureBack { background: var(--surface); color: var(--ink); border-color: var(--line); }
+:root[data-theme="dark"] .insight { background: #294a36; }
+:root[data-theme="dark"] .cardBottom,
+:root[data-theme="dark"] .stageTop,
+:root[data-theme="dark"] .titleInput { border-color: var(--line); }
+:root[data-theme="dark"] .cardBottom span,
+:root[data-theme="dark"] .stageTop b,
+:root[data-theme="dark"] .nav b,
+:root[data-theme="dark"] .orbit,
+:root[data-theme="dark"] .stageIcon { background: var(--surface-soft); color: var(--ink); }

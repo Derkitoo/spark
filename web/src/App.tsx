@@ -41,6 +41,35 @@ export default function Home() {
   const [loading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    localStorage.getItem("spark-theme") === "dark" ? "dark" : "light"
+  );
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("spark-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(""), 3500);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
+  useEffect(() => {
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, []);
+
+  function navigate(next: typeof view) {
+    setView(next);
+    setMenuOpen(false);
+  }
 
   useEffect(() => {
     if (localStorage.getItem("spark-cloud-import-v1") === "done" || !navigator.onLine) return;
@@ -77,17 +106,20 @@ export default function Home() {
       });
       persist([...merged.values()]);
       localStorage.setItem("spark-cloud-import-v1", "done");
+      if (interactive) setNotice(`${cloudIdeas.length} ancienne(s) idée(s) récupérée(s).`);
     } catch {
       if (interactive) setError("Récupération impossible pour le moment. Réessaie avec une connexion Internet.");
     }
   }
 
-  function persist(next: Idea[]) {
+  function persist(next: Idea[]): boolean {
     try {
       localStorage.setItem("etincelle-ideas-v1", JSON.stringify(next));
       setIdeas(next);
+      return true;
     } catch {
       setError("Enregistrement impossible sur cet appareil. Vérifie l’espace disponible et exporte tes idées.");
+      return false;
     }
   }
 
@@ -99,6 +131,7 @@ export default function Home() {
     link.download = `spark-idees-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
+    setNotice("Sauvegarde téléchargée.");
   }
 
   async function importIdeas(file: File) {
@@ -114,8 +147,10 @@ export default function Home() {
         const previous = merged.get(idea.id);
         if (!previous || Number(idea.updatedAt) > Number(previous.updatedAt)) merged.set(idea.id, idea);
       });
-      persist([...merged.values()]);
-      setError("");
+      if (persist([...merged.values()])) {
+        setError("");
+        setNotice(`${valid.length} idée(s) importée(s).`);
+      }
     } catch {
       setError("Ce fichier n’est pas une sauvegarde Spark valide.");
     }
@@ -150,9 +185,11 @@ export default function Home() {
       createdAt: now,
       updatedAt: now,
     };
-    persist([idea, ...ideas]);
-    setText("");
-    setTagInput("");
+    if (persist([idea, ...ideas])) {
+      setText("");
+      setTagInput("");
+      setNotice("Idée capturée.");
+    }
     setSaving(false);
   }
 
@@ -160,6 +197,7 @@ export default function Home() {
     e?.stopPropagation();
     const next = ideas.map(i => (i.id === idea.id ? { ...i, pinned: !i.pinned, updatedAt: Date.now() } : i));
     persist(next);
+    setNotice(idea.pinned ? "Idée désépinglée." : "Idée épinglée.");
     if (editing?.id === idea.id) {
       setEditing({ ...editing, pinned: !editing.pinned });
     }
@@ -179,7 +217,7 @@ export default function Home() {
       tags,
       updatedAt: Date.now(),
     };
-    persist(ideas.map(i => (i.id === editing.id ? next : i)));
+    if (persist(ideas.map(i => (i.id === editing.id ? next : i)))) setNotice("Idée mise à jour.");
     setEditing(null);
     setSaving(false);
   }
@@ -196,6 +234,7 @@ export default function Home() {
       updatedAt: Date.now(),
     };
     persist(ideas.map(i => (i.id === maturing.id ? next : i)));
+    setNotice("Réflexion enregistrée.");
     setMaturing(null);
   }
 
@@ -203,6 +242,7 @@ export default function Home() {
     if (!editing || !confirm("Supprimer cette idée ?")) return;
     const id = editing.id;
     persist(ideas.filter(i => i.id !== id));
+    setNotice("Idée supprimée.");
     setEditing(null);
   }
 
@@ -210,6 +250,7 @@ export default function Home() {
     const index = statuses.indexOf(idea.status);
     if (index < 0 || index === statuses.length - 1) return;
     persist(ideas.map(i => (i.id === idea.id ? { ...i, status: statuses[index + 1], updatedAt: Date.now() } : i)));
+    setNotice("Idée passée à l’étape suivante.");
   }
 
   const allTags = Array.from(new Set(ideas.flatMap(i => i.tags ?? []))).sort();
@@ -228,22 +269,24 @@ export default function Home() {
 
   return (
     <main className="shell">
-      <aside className="sidebar">
+      {menuOpen && <button className="menuScrim" aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} />}
+      <aside className={`sidebar ${menuOpen ? "isOpen" : ""}`} aria-label="Menu principal">
         <div className="brand"><span>S</span> Spark</div>
-        <nav>
-          <button onClick={() => setView("today")} className={`nav ${view === "today" ? "active" : ""}`}>
+        <button className="menuClose" aria-label="Fermer le menu" onClick={() => setMenuOpen(false)}>×</button>
+        <nav aria-label="Navigation principale">
+          <button onClick={() => navigate("today")} aria-current={view === "today" ? "page" : undefined} className={`nav ${view === "today" ? "active" : ""}`}>
             <span>⌂</span>Aujourd’hui
           </button>
-          <button onClick={() => setView("library")} className={`nav ${view === "library" ? "active" : ""}`}>
+          <button onClick={() => navigate("library")} aria-current={view === "library" ? "page" : undefined} className={`nav ${view === "library" ? "active" : ""}`}>
             <span>▤</span>Mes idées <b>{ideas.length}</b>
           </button>
-          <button onClick={() => setView("mindmap")} className={`nav ${view === "mindmap" ? "active" : ""}`}>
+          <button onClick={() => navigate("mindmap")} aria-current={view === "mindmap" ? "page" : undefined} className={`nav ${view === "mindmap" ? "active" : ""}`}>
             <span>☸</span>Mindmap
           </button>
-          <button onClick={() => setView("connections")} className={`nav ${view === "connections" ? "active" : ""}`}>
+          <button onClick={() => navigate("connections")} aria-current={view === "connections" ? "page" : undefined} className={`nav ${view === "connections" ? "active" : ""}`}>
             <span>◇</span>Connexions
           </button>
-          <button onClick={() => setView("garden")} className={`nav ${view === "garden" ? "active" : ""}`}>
+          <button onClick={() => navigate("garden")} aria-current={view === "garden" ? "page" : undefined} className={`nav ${view === "garden" ? "active" : ""}`}>
             <span>♧</span>Mon jardin
           </button>
         </nav>
@@ -256,6 +299,9 @@ export default function Home() {
             </div>
           </div>
           <div className="privacy">● Données privées sur cet appareil</div>
+          <button className="themeToggle" onClick={() => setTheme(theme === "light" ? "dark" : "light")}>
+            {theme === "light" ? "☾ Mode sombre" : "☼ Mode clair"}
+          </button>
           <button className="backupButton" onClick={exportIdeas}>↓ Exporter mes idées</button>
           <label className="backupButton">↑ Importer une sauvegarde
             <input type="file" accept=".json,application/json" hidden onChange={e => {
@@ -269,9 +315,13 @@ export default function Home() {
 
       <section className="content">
         <header>
-          <p>{date}</p>
+          <div className="headerLead">
+            <button className="menuTrigger" aria-label="Ouvrir le menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>☰</button>
+            <p>{date}</p>
+          </div>
           <div className="headerTools">
             <span className="cloud">✓ Disponible hors ligne</span>
+            <button className="themeHeader" aria-label={theme === "light" ? "Activer le mode sombre" : "Activer le mode clair"} onClick={() => setTheme(theme === "light" ? "dark" : "light")}>{theme === "light" ? "☾" : "☼"}</button>
             <details className="backupMenu">
               <summary>Sauvegarde</summary>
               <div>
@@ -290,11 +340,12 @@ export default function Home() {
         </header>
 
         {error && (
-          <div className="error">
+          <div className="error" role="alert">
             {error}
-            <button onClick={() => setError("")}>×</button>
+            <button aria-label="Fermer l'alerte" onClick={() => setError("")}>×</button>
           </div>
         )}
+        {notice && <div className="notice" role="status">✓ {notice}</div>}
 
         {view === "today" ? (
           <>
@@ -344,6 +395,7 @@ export default function Home() {
               onTogglePin={togglePin}
               title="Idées récentes"
               onAll={() => setView("library")}
+              onCreate={() => navigate("today")}
               onTagClick={tag => {
                 setSelectedTag(tag);
                 setView("library");
@@ -397,6 +449,7 @@ export default function Home() {
               onOpen={setEditing}
               onTogglePin={togglePin}
               title=""
+              onCreate={() => navigate("today")}
               onTagClick={tag => setSelectedTag(selectedTag === tag ? null : tag)}
             />
           </section>
@@ -537,6 +590,7 @@ function IdeaSection({
   onTogglePin,
   title,
   onAll,
+  onCreate,
   onTagClick,
 }: {
   ideas: Idea[];
@@ -545,6 +599,7 @@ function IdeaSection({
   onTogglePin?: (i: Idea, e: React.MouseEvent) => void;
   title: string;
   onAll?: () => void;
+  onCreate?: () => void;
   onTagClick?: (tag: string) => void;
 }) {
   return (
@@ -562,11 +617,15 @@ function IdeaSection({
       </div>
 
       {loading ? (
-        <div className="empty">Chargement de tes idées…</div>
+        <div className="skeletonGrid" aria-label="Chargement des idées">
+          <div className="skeletonCard" /><div className="skeletonCard" /><div className="skeletonCard" />
+        </div>
       ) : ideas.length === 0 ? (
         <div className="empty">
+          <span className="emptyIcon" aria-hidden="true">✦</span>
           <strong>Ta prochaine étincelle commence ici.</strong>
           <span>Capture une idée pour la retrouver dans cette bibliothèque.</span>
+          {onCreate && <button className="newIdea" onClick={onCreate}>Capturer une idée</button>}
         </div>
       ) : (
         <div className="ideaGrid">
@@ -575,8 +634,10 @@ function IdeaSection({
               className={`ideaCard ${idea.pinned ? "pinned" : ""}`}
               key={idea.id}
               onClick={() => onOpen(idea)}
+              role="button"
+              aria-label={`Ouvrir l’idée : ${idea.title}`}
               tabIndex={0}
-              onKeyDown={e => { if (e.key === "Enter") onOpen(idea); }}
+              onKeyDown={e => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(idea); } }}
             >
               <div className="cardHeaderRow">
                 <div className={`ideaIcon ${["sun", "mint", "lilac"][index % 3]}`}>✦</div>
